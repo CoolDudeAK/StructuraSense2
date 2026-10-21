@@ -8,3 +8,4 @@ data_local/
 uploads/
 tests/shots/
 .venv/
+   data/.secret_key
