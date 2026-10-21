@@ -1,0 +1,35 @@
+import { h, fmt, chip, field, toast, loading, errorBox, confirmBox, table, modal } from '../ui.js';
+import { get, post, put, del, session, patch } from '../api.js';
+
+export async function render(box) {
+  const admin = session.can('admin'), host = h('div'); let cl, set, users = [], audit = [], sys, closed = false;
+  const load = async () => { [cl, set, sys] = await Promise.all([get('/cloud/status'), get('/settings'), get('/system/status')]); users = admin ? await get('/users') : []; audit = session.can('engineer') ? await get('/system/audit?limit=25') : []; };
+  const draw = () => {
+    if (closed) return;
+    const url = h('input', { placeholder: 'https://abcdxyz.supabase.co', disabled: !admin }), key = h('input', { type: 'password', autocomplete: 'off', placeholder: 'service_role key (kept on the server only)', disabled: !admin });
+    const wh = h('input', { placeholder: 'https://hooks.slack.com/…  (optional)', disabled: !admin });
+    const th = Object.entries(set.thresholds); const tin = {};
+    host.replaceChildren(h('div', { class: 'pagehead' }, h('div', null, h('h1', null, 'Cloud & settings'), h('p', null, 'Everything works offline on this computer\'s own database. Connecting Supabase makes a copy in the cloud; nothing is moved away from here.'))),
+      h('div', { class: 'grid g2' },
+        h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Supabase mirror'), chip(cl.configured ? 'REAL' : 'EXTERNAL', cl.configured ? 'CONFIGURED' : 'NEEDS YOUR PROJECT')),
+          h('dl', { class: 'stat-list' }, [['Status', cl.configured ? 'Connected settings saved' : 'Not configured'], ['Project', cl.url || '—'], ['Waiting to upload', cl.pending], ['Failed', cl.failed], ['Total uploaded', cl.total_pushed], ['Last success', fmt.ago(cl.last_ok_ms)]].flatMap(([a, b]) => [h('dt', null, a), h('dd', null, String(b))])),
+          cl.last_error ? h('p', { class: 'note', style: { borderColor: 'var(--crit)' } }, 'Last error: ' + cl.last_error) : null,
+          admin ? h('div', null, h('hr', { style: { border: 0, borderTop: '1px solid var(--line)', margin: '12px 0' } }), field('Project URL', url), field('Service-role key', key, 'Stays on this server. Never sent to your browser again.'),
+            h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: async () => { try { await put('/cloud/config', { url: url.value, key: key.value }); toast('Saved', 'ok'); await load(); draw(); } catch (e) { toast(e.message, 'err'); } } }, 'Save'),
+              h('button', { class: 'btn', disabled: !cl.configured, onclick: async () => { const r = await post('/cloud/test'); toast(r.ok ? 'Connection works' : (r.message || 'Connection failed'), r.ok ? 'ok' : 'err', 7000); } }, 'Test'), h('button', { class: 'btn', disabled: !cl.configured, onclick: async () => { const r = await post('/cloud/push-all'); toast(r.ok ? `Uploaded (${r.queued} queued)` : (r.message || 'Upload failed'), r.ok ? 'ok' : 'err', 7000); await load(); draw(); } }, 'Upload everything now'),
+              h('button', { class: 'btn danger', disabled: !cl.configured, onclick: async () => { await del('/cloud/config'); await load(); draw(); } }, 'Disconnect')),
+            h('details', { style: { marginTop: '12px' } }, h('summary', null, 'First-time setup steps'), h('ol', null, h('li', null, 'Create a free project at supabase.com.'), h('li', null, 'Open SQL Editor → paste database/supabase_schema.sql → Run.'), h('li', null, 'Settings → API: copy the Project URL and the service_role key into the boxes above.'), h('li', null, 'Press Test, then Upload everything now.'))))
+            : h('p', { class: 'muted' }, 'Only admins can change cloud settings.')),
+        h('section', { class: 'card' }, h('h2', null, 'Alert thresholds'), h('p', { class: 'muted' }, 'When the rules engine raises warnings and critical alerts. Defaults are starting points, not code limits.'),
+          h('div', { style: { maxHeight: '340px', overflow: 'auto' } }, th.map(([k, v]) => { tin[k] = h('input', { type: 'number', step: 'any', value: v, disabled: !admin, style: { width: '110px' } }); return h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '6px' } }, h('code', null, k), tin[k]); })),
+          field('Alert webhook (Slack/Teams-style, https only)', wh, set.webhook_set ? 'A webhook is set. Enter a new one to replace, or leave blank to remove.' : ''),
+          admin ? h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: async () => { try { const t = {}; for (const k in tin) t[k] = +tin[k].value; await put('/settings', { thresholds: t, webhook_url: wh.value }); toast('Settings saved', 'ok'); await load(); draw(); } catch (e) { toast(e.message, 'err'); } } }, 'Save'), h('button', { class: 'btn', disabled: !set.webhook_set, onclick: async () => { const r = await post('/system/test-webhook'); toast(r.ok ? 'Webhook delivered' : (r.message || 'Failed'), r.ok ? 'ok' : 'err', 6000); } }, 'Test webhook')) : null)),
+      admin ? h('section', { class: 'card', style: { marginTop: '14px' } }, h('h2', null, 'Users'), table([{ label: 'Name', key: 'name' }, { label: 'Email', key: 'email' }, { label: 'Role', render: u => { const s = h('select', { style: { width: 'auto' }, 'aria-label': 'Role for ' + u.email, onchange: async () => { try { await patch('/users/' + u.id, { role: s.value }); toast('Role updated', 'ok'); } catch (e) { toast(e.message, 'err'); s.value = u.role; } } }, ['viewer', 'engineer', 'admin'].map(r => h('option', { selected: r === u.role }, r))); return s; } }], users)) : null,
+      audit.length ? h('section', { class: 'card', style: { marginTop: '14px' } }, h('h2', null, 'Recent activity (audit log)'), table([{ label: 'When', render: a => fmt.dt(a.ts_ms) }, { label: 'Who', key: 'user_name' }, { label: 'Action', key: 'action' }, { label: 'Detail', render: a => (a.detail || '').slice(0, 70) }], audit)) : null,
+      h('section', { class: 'card', style: { marginTop: '14px' } }, h('h2', null, 'Database'), h('dl', { class: 'stat-list' }, Object.entries(sys.counts).flatMap(([k, v]) => [h('dt', null, k.replace(/_/g, ' ')), h('dd', null, fmt.int(v))])), h('p', { class: 'muted' }, 'Version ' + sys.version),
+        admin ? h('button', { class: 'btn danger', onclick: () => { const c = h('input', { placeholder: 'RESET' }); modal('Reset to demo data', h('div', null, h('p', { class: 'note', style: { borderColor: 'var(--crit)' } }, 'This deletes ALL structures, readings, trials, alerts and uploads you added, and restores the demo data. It cannot be undone.'), field('Type RESET to confirm', c)), [{ label: 'Cancel' }, { label: 'Reset everything', kind: 'danger', run: async () => { try { await post('/system/reset', { confirm: c.value }); toast('Reset complete', 'ok'); location.reload(); } catch (e) { toast(e.message, 'err'); return false; } } }]); } }, 'Reset to demo data…') : null));
+  };
+  box.append(host); host.replaceChildren(loading());
+  try { await load(); draw(); } catch (e) { host.replaceChildren(errorBox(e)); }
+  return () => { closed = true; };
+}

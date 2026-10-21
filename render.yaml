@@ -1,0 +1,24 @@
+# Render "Blueprint": click New > Blueprint in Render and point it at your GitHub repo.
+services:
+  - type: web
+    name: structurasense-api
+    runtime: python
+    plan: starter            # a persistent disk needs a paid instance; the free tier forgets data on restart
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: gunicorn wsgi:app --workers 1 --threads 16 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health
+    disk:
+      name: ss-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: SS_DATA_DIR
+        value: /var/data
+      - key: SS_SEED_DEMO
+        value: "1"
+      - key: SS_SECRET_KEY
+        generateValue: true
+      - key: SS_DEMO_PASSWORD
+        sync: false          # CHOOSE your own password: the default demo password is public in the README
+      - key: SS_CORS_ORIGIN
+        sync: false          # set to your Vercel address, e.g. https://structurasense.vercel.app

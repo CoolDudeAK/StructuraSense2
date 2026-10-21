@@ -1,0 +1,9 @@
+flask>=3.0
+numpy>=1.26
+scipy>=1.11
+scikit-learn>=1.4
+scikit-image>=0.22
+opencv-python-headless>=4.9
+PyJWT>=2.8
+requests>=2.31
+pyserial>=3.5   # only needed by tools/serial_bridge.py

@@ -1,0 +1,50 @@
+[
+ {
+  "file": "sample_hairline.png",
+  "label": "Hairline crack",
+  "caption": "Expected: about 0.1-0.2 mm",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": 0.16,
+  "has_crack": true
+ },
+ {
+  "file": "sample_fine.png",
+  "label": "Fine crack",
+  "caption": "Expected: about 0.3 mm",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": 0.3,
+  "has_crack": true
+ },
+ {
+  "file": "sample_moderate.png",
+  "label": "Moderate crack",
+  "caption": "Expected: about 0.6 mm",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": 0.6,
+  "has_crack": true
+ },
+ {
+  "file": "sample_wide.png",
+  "label": "Wide crack",
+  "caption": "Expected: about 1.4 mm",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": 1.4,
+  "has_crack": true
+ },
+ {
+  "file": "sample_clean_pores.png",
+  "label": "Clean surface with pores",
+  "caption": "Expected: no crack",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": null,
+  "has_crack": false
+ },
+ {
+  "file": "sample_clean_stained.png",
+  "label": "Clean surface with stains",
+  "caption": "Expected: no crack",
+  "scale_px_per_mm": 10.0,
+  "true_width_mm": null,
+  "has_crack": false
+ }
+]
