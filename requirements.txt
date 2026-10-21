@@ -7,3 +7,4 @@ opencv-python-headless>=4.9
 PyJWT>=2.8
 requests>=2.31
 pyserial>=3.5   # only needed by tools/serial_bridge.py
+gunicorn
